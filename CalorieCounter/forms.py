@@ -3,16 +3,16 @@ from crispy_forms.helper import FormHelper, Layout
 from crispy_forms.layout import Submit, Div
 from crispy_forms.bootstrap import FieldWithButtons
 
-class NameForm(forms.Form):
-    name = forms.DateField()
+class DateForm(forms.Form):
+    date = forms.DateField()
 
     def __init__(self, *args, **kwargs):
-        super(NameForm, self).__init__(*args, **kwargs)
+        super(DateForm, self).__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.form_show_labels = False
         self.helper.layout = Layout(
             Div(
-                FieldWithButtons('name', Submit(css_class="btn btn-dark", value="->", name="gotodate")),
+                FieldWithButtons('date', Submit(css_class="btn btn-dark", value="->", name="gotodate")),
                 css_class='row',
             ),
         )

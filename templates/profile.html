@@ -32,19 +32,19 @@
                 <div class="col">
                     <form action="." method="post" enctype="application/x-www-form-urlencoded">
                         {% csrf_token %}
-                        <button type="submit" class="btn btn-dark" name="yesterday" value="yesterday" > {{ dates.yesterday }}</button>
+                        <button type="submit" class="btn btn-dark" name="previous" value="previous" > {{ dates.previous }}</button>
                     </form>
                 </div>
                 <div class="col-2 text-center">
                     <form action="." method="post" enctype="application/x-www-form-urlencoded">
                         {% csrf_token %}
-                        {% crispy name_form %}
+                        {% crispy date_form %}
                     </form>
                 </div>
                 <div class="col text-right">
                     <form action="." method="post" enctype="application/x-www-form-urlencoded">
                         {% csrf_token %}
-                        <button type="submit" class="btn btn-dark" name="tommorow" value="tommorow">&nbsp;{{ dates.tomorrow }}</button>
+                        <button type="submit" class="btn btn-dark" name="next" value="next">&nbsp;{{ dates.next }}</button>
                     </form>
                 </div>
               </div>
