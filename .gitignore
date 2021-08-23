@@ -1,0 +1,4 @@
+.idea
+CalorieCounter/__pycache__/
+CalorieCounter/migrations/__pycache__/
+CalorieCounterDjangoApp/__pycache__/
