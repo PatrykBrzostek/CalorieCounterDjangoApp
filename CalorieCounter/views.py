@@ -3,6 +3,7 @@ from django.http import Http404
 from django.contrib.auth import views as auth_views
 from django.views import View
 
+from tools.caloriecalculator import Calculator
 import re
 from datetime import date, datetime, timedelta
 import pandas as pd
@@ -11,6 +12,7 @@ from .forms import *
 
 class ProfileView(View):
     template_name = 'profile.html'
+    calculator = Calculator()
 
     def dispatch(self, request, *args, **kwargs):
         self.url_date=kwargs['url_date']
@@ -20,7 +22,7 @@ class ProfileView(View):
         self.quick_meal_form = QuickMealForm(request.POST or None, initial={'carbohydrates': 0.0, 'protein': 0.0, 'fat':0.0})
 
         self.dates = self.__get_new_dates(self.url_date)
-        self.meals = self.__get_meals_from_date(self.url_date, request.user)
+        self.meals, self.df = self.__get_meals_from_date(self.url_date, request.user)
 
         return super(ProfileView, self).dispatch(request, *args, **kwargs)
 
@@ -34,7 +36,7 @@ class ProfileView(View):
             raise Http404
 
     def get(self, request, *args, **kwargs):
-        return render(request, self.template_name, {'date_form':self.date_form, 'quick_meal_form': self.quick_meal_form, 'dates': self.dates, 'meals': self.meals})
+        return render(request, self.template_name, {'date_form':self.date_form, 'quick_meal_form': self.quick_meal_form, 'dates': self.dates, 'meals': self.meals, 'df': self.df})
 
     def post(self, request, *args, **kwargs):
         is_redirected=False
@@ -82,10 +84,13 @@ class ProfileView(View):
 
         if day:
             meals = day.meal.all()
-            # df = pd.DataFrame(list(meals.values('product__ean', 'product__fat', 'weight')))
+            df = pd.DataFrame(list(meals.values('product__name', 'weight', 'product__carbohydrates', 'product__protein', 'product__fat')))
+            df['kcal']=[self.calculator.get_portions_scale(row['weight'])*self.calculator.count_calories(row['product__carbohydrates'],row['product__protein'],row['product__fat']) for index, row in df.iterrows()]
+            df = df.to_dict('index')
         else:
             meals = []
-        return meals
+            df = []
+        return meals, df
 
     def __get_new_dates(self, url_date):
         datetime_object = datetime.strptime(url_date, '%Y-%m-%d').date()

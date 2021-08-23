@@ -49,15 +49,36 @@
                 </div>
               </div>
               <div class="row">
-                  <div class="col text-center">
-                    <h3> {{ dates.today }} </h3>
-                  </div>
-              </div>
-              <div class="row">
                   <div class="col">
-                    {%  for meal in meals %}
-                        {{ meal.weight}}  {{ meal.product.name }} <br>
-                    {% endfor %}
+                    {{ df.product__name.0 }}
+                    {{ df.kcal.0 }}
+
+                      <table class="table table-striped table-sm">
+                          <thead>
+                            <tr>
+                              <th scope="col"></th>
+                              <th scope="col">Product</th>
+                              <th scope="col">Weight</th>
+                              <th scope="col">Carbohydrates</th>
+                              <th scope="col">Protein</th>
+                              <th scope="col">Fat</th>
+                              <th scope="col">Kcal</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                                {% for key, value in df.items %}
+                                <tr>
+                                  <th scope="row">{{ key }}</th>
+                                  <td>{{ value.product__name }}</td>
+                                  <td>{{ value.weight }}g</td>
+                                  <td>{{ value.product__carbohydrates }}</td>
+                                  <td>{{ value.product__protein }}</td>
+                                  <td>{{ value.product__fat }}</td>
+                                  <td>{{ value.kcal }}</td>
+                                </tr>
+                                {% endfor %}
+                          </tbody>
+                      </table>
                   </div>
               </div>
               <div class="row">
@@ -67,8 +88,10 @@
                         {% crispy quick_meal_form %}
                     </form>
                   </div>
-                  <div class="col-8">
-                    df
+                  <div class="col-8 text-center">
+
+                    <h3> {{ dates.current }} </h3>
+
                   </div>
               </div>
 
