@@ -66,14 +66,15 @@ class ProfileView(View):
         if is_redirected:
             return redirect('/profile/{}/{}/'.format(self.username, new_date))
         else:
-            return render(request, self.template_name, {'date_form':self.date_form,'quick_meal_form': self.quick_meal_form, 'dates': self.dates, 'meals': self.meals})
+            return render(request, self.template_name, {'date_form':self.date_form,'quick_meal_form': self.quick_meal_form, 'dates': self.dates, 'meals': self.meals, 'df': self.df})
 
     def __add_quick_meal(self, request_user_id, url_date, c, p, f):
         unique_ean = 'N' + re.sub(r"[^0-9]", "", str(datetime.now()))[2:]
         new_product = Product.objects.create(ean=unique_ean, name='Quick Meal',
                                              carbohydrates=c,
                                              protein=p,
-                                             fat=f)
+                                             fat=f,
+                                             kcal=self.calculator.count_calories(c,p,f))
         quick_meal = Meal.objects.create(product_id=new_product.id)
         updated_day, _ = Day.objects.get_or_create(user_id=request_user_id, date=url_date)
         updated_day.save()
@@ -84,8 +85,13 @@ class ProfileView(View):
 
         if day:
             meals = day.meal.all()
-            df = pd.DataFrame(list(meals.values('product__name', 'weight', 'product__carbohydrates', 'product__protein', 'product__fat')))
-            df['kcal']=[self.calculator.get_portions_scale(row['weight'])*self.calculator.count_calories(row['product__carbohydrates'],row['product__protein'],row['product__fat']) for index, row in df.iterrows()]
+            df = pd.DataFrame(list(meals.values('product__name', 'weight', 'product__carbohydrates', 'product__protein', 'product__fat', 'product__kcal')))
+
+            columns_to_calculate= ['product__carbohydrates', 'product__protein', 'product__fat', 'product__kcal']
+            for column in columns_to_calculate:
+                df[column] = [self.calculator.get_portions_scale(row['weight'])*row[column] for index, row in df.iterrows()]
+            df.loc['Total'] = df[columns_to_calculate].sum()
+            df.loc['Total'] = df.loc['Total'].fillna('')
             df = df.to_dict('index')
         else:
             meals = []

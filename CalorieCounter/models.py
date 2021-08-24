@@ -7,6 +7,7 @@ class Product(Model):
     carbohydrates = FloatField(default=0)
     protein = FloatField(default=0)
     fat = FloatField(default=0)
+    kcal = FloatField(default=0)
 
     def __str__(self):
         return self.name
