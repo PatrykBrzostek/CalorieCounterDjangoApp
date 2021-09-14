@@ -15,6 +15,6 @@ Upcoming features and tasks:
 - showing stats for a given period
 - removing meals
 
-![Alt text](images/example2.png?raw=true "example.png")
+![Alt text](images/example3.png?raw=true "example.png")
 
 
