@@ -152,12 +152,13 @@ class ProfileView(View):
 
         if day:
             meals = day.meal.all()
-            df = pd.DataFrame(list(meals.values('product__name', 'weight', 'product__carbohydrates', 'product__protein', 'product__fat', 'product__kcal')))
+            df = pd.DataFrame(list(meals.values('product__name', 'product__ean', 'weight', 'product__carbohydrates', 'product__protein', 'product__fat', 'product__kcal')))
 
             columns_to_calculate= ['product__carbohydrates', 'product__protein', 'product__fat', 'product__kcal']
             for column in columns_to_calculate:
-                df[column] = [self.calculator.get_portions_scale(row['weight'])*row[column] for index, row in df.iterrows()]
-            df.loc['Total'] = df[columns_to_calculate].sum()
+                df[column] = [round(self.calculator.get_portions_scale(row['weight'])*row[column],2) for index, row in df.iterrows()]
+            df['weight']=[str(row['weight'])+' g' if row['product__ean'][0]!='N' else '-' for index, row in df.iterrows()]
+            df.loc['Total'] = round(df[columns_to_calculate].sum(),2)
             df.loc['Total'] = df.loc['Total'].fillna('')
             df = df.to_dict('index')
         else:
