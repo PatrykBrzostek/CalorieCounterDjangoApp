@@ -88,9 +88,69 @@
                             {% crispy quick_meal_form %}
                             </form>
                         </div>
-                        <div class="row text-center">
-                            <br>
-                            <h3> Placeholder - search and add meal by ean and name</h3>
+                        <div class="row">
+                            <div class="col">
+                                <br>
+                                <form action="." method="post" enctype="application/x-www-form-urlencoded">
+                                {% csrf_token %}
+                                {% crispy search_form %}
+                                </form>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col">
+                                <div class="accordion" id="accordionExample">
+                                    {% for product in products %}
+                                        <div class="card">
+                                            <div class="card-header pb-0 pt-0 pl-0" id="headingOne">
+                                                    <button class="btn btn-link btn-block text-left" type="button" data-toggle="collapse" data-target="#N{{ product.ean }}" aria-expanded="false" aria-controls="N{{ product.ean }}">
+                                                      {{ product.name }}
+                                                    </button>
+                                            </div>
+                                            <div id="N{{ product.ean }}" class="collapse" aria-labelledby="headingOne" data-parent="#accordionExample">
+                                                  <div class="card-body">
+                                                      <table class="table table-sm">
+                                                          <thead>
+                                                            <tr">
+                                                              <th scope="col">EAN</th>
+                                                              <th scope="col" class="font-weight-normal">{{ product.ean}}</th>
+                                                            </tr>
+                                                            <tr>
+                                                              <th scope="col"></th>
+                                                              <th scope="col">Per 100g/ml</th>
+                                                            </tr>
+                                                          </thead>
+                                                          <tbody>
+                                                                <tr>
+                                                                  <th scope="row"> Kcal </th>
+                                                                  <td>{{ product.kcal }}</td>
+                                                                </tr>
+                                                                <tr>
+                                                                  <th scope="row"> Carbohydrates </th>
+                                                                  <td>{{ product.carbohydrates }}</td>
+                                                                </tr>
+                                                                <tr>
+                                                                  <th scope="row"> Protein </th>
+                                                                  <td>{{ product.protein }}</td>
+                                                                </tr>
+                                                                <tr>
+                                                                  <th scope="row"> Fat </th>
+                                                                  <td>{{ product.fat }}</td>
+                                                                </tr>
+                                                          </tbody>
+                                                      </table>
+                                                      <form action="." method="post" id={{product.ean}} enctype="application/x-www-form-urlencoded">
+                                                        {% csrf_token %}
+                                                          <input type="hidden" value="{{product.ean}}" name="id">
+                                                        {% crispy meal_form %}
+                                                      </form>
+                                                  </div>
+                                                </div>
+                                            </div>
+                                    {% endfor %}
+                                  </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

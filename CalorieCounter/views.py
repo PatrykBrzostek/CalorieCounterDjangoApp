@@ -3,8 +3,10 @@ from django.http import Http404
 from django.contrib.auth import views as auth_views
 from django.views import View
 
+import openfoodfacts
 from tools.caloriecalculator import Calculator
 import re
+import itertools
 from datetime import date, datetime, timedelta
 import pandas as pd
 from .models import Day, Meal, Product
@@ -20,9 +22,12 @@ class ProfileView(View):
         self.__is_correct_url(self.username, kwargs['username'], self.url_date)
         self.date_form = DateForm(request.POST or None, initial={'date': self.url_date})
         self.quick_meal_form = QuickMealForm(request.POST or None, initial={'carbohydrates': 0.0, 'protein': 0.0, 'fat':0.0})
+        self.search_form = SearchForm(request.POST or None)
+        self.meal_form = MealForm(request.POST or None, initial={'portion': 100.0})
 
         self.dates = self.__get_new_dates(self.url_date)
         self.meals, self.df = self.__get_meals_from_date(self.url_date, request.user)
+        self.products = []
 
         return super(ProfileView, self).dispatch(request, *args, **kwargs)
 
@@ -36,17 +41,21 @@ class ProfileView(View):
             raise Http404
 
     def get(self, request, *args, **kwargs):
-        return render(request, self.template_name, {'date_form':self.date_form, 'quick_meal_form': self.quick_meal_form, 'dates': self.dates, 'meals': self.meals, 'df': self.df})
+
+        return render(request, self.template_name, {'search_form':self.search_form,'date_form':self.date_form, 'meal_form': self.meal_form,
+                                                    'quick_meal_form': self.quick_meal_form, 'dates': self.dates,
+                                                    'meals': self.meals, 'df': self.df, 'products': self.products})
 
     def post(self, request, *args, **kwargs):
         is_redirected=False
         new_date = self.url_date
         if request.POST.get('quick_meal'):
-            if self.quick_meal_form.is_valid():  # change to detect submit
+            if self.quick_meal_form.is_valid():
                 self.__add_quick_meal(request.user.id, self.url_date, self.quick_meal_form.cleaned_data['carbohydrates'], self.quick_meal_form.cleaned_data['protein'], self.quick_meal_form.cleaned_data['fat'])
                 is_redirected=True
             else:
                 self.date_form.errors.clear()
+                self.search_form.errors.clear()
         elif request.POST.get("previous"):
             new_date = self.dates['previous']
             is_redirected = True
@@ -59,14 +68,75 @@ class ProfileView(View):
                     new_date = str(self.date_form.cleaned_data['date'])
                     is_redirected = True
             else:
-                self.quick_meal_form.errors.clear() #temporary - error shows, when name_form is not valid
+                self.quick_meal_form.errors.clear() # temporary - change the main logic of post method
+                self.search_form.errors.clear()
+        elif request.POST.get('search'):
+            if self.search_form.is_valid():
+                self.__search(request.user.id, self.url_date, self.search_form.cleaned_data['query'])
+                #is_redirected = True
+            self.date_form.errors.clear() # temporary - change the main logic of post method
+            self.quick_meal_form.errors.clear()
+            self.meal_form.errors.clear()
+        elif request.POST.get('add_meal'):
+            if self.meal_form.is_valid():
+                chosen_product_ean = request.POST.get('id')
+                self.__add_meal(request.user.id, self.url_date, Product.objects.get(ean=chosen_product_ean), portion=self.meal_form.cleaned_data['portion'])
+                is_redirected = True
         else:
             pass
 
         if is_redirected:
             return redirect('/profile/{}/{}/'.format(self.username, new_date))
         else:
-            return render(request, self.template_name, {'date_form':self.date_form,'quick_meal_form': self.quick_meal_form, 'dates': self.dates, 'meals': self.meals, 'df': self.df})
+            return render(request, self.template_name,
+                          {'search_form': self.search_form, 'date_form': self.date_form, 'meal_form': self.meal_form,
+                           'quick_meal_form': self.quick_meal_form, 'dates': self.dates,
+                           'meals': self.meals, 'df': self.df, 'products': self.products})
+
+    def __search(self, request_user_id, url_date, query):
+        if query.isdigit():
+            self.__search_by_ean(request_user_id, url_date, query)
+        else:
+            self.__search_by_name(request_user_id, url_date, query)
+
+    def __search_by_name(self, request_user_id, url_date, name, max_number=5):
+        #add try and checking if got results
+        results = openfoodfacts.products.search_all(name)
+        top_results = itertools.islice(results, max_number)
+        for off_product in top_results:
+            try:
+                product = Product.objects.get(ean=off_product['code'])
+            except Product.DoesNotExist:
+                product = Product.objects.create(name=off_product['product_name'], ean=off_product['_id'],
+                                                 carbohydrates=off_product['nutriments']['carbohydrates_100g'],
+                                                 protein=off_product['nutriments']['proteins_100g'],
+                                                 fat=off_product['nutriments']['fat_100g'],
+                                                 kcal=off_product['nutriments']['energy-kcal_100g'])
+            self.products.append(product)
+
+    def __search_by_ean(self, request_user_id, url_date, ean):#function name to change
+        try:
+            product=Product.objects.get(ean=ean)
+        except Product.DoesNotExist:
+            product=None
+
+        if not product:
+            off_product = openfoodfacts.products.get_product(ean) #should be in try
+            if off_product['status']:
+                product = Product.objects.create(name=off_product['product']['product_name'], ean=ean,
+                                                 carbohydrates=off_product['product']['nutriments']['carbohydrates_100g'], protein=off_product['product']['nutriments']['proteins_100g'],
+                                                 fat=off_product['product']['nutriments']['fat_100g'], kcal=off_product['product']['nutriments']['energy-kcal_100g'])
+
+        if product:
+            self.products.append(product)
+        else:
+            print('no such ean in database')
+
+    def __add_meal(self, request_user_id, url_date, product, portion=100):
+        new_meal = Meal.objects.create(product_id=product.id, weight=portion)
+        updated_day, _ = Day.objects.get_or_create(user_id=request_user_id, date=url_date)
+        updated_day.save()
+        updated_day.meal.add(new_meal)
 
     def __add_quick_meal(self, request_user_id, url_date, c, p, f):
         unique_ean = 'N' + re.sub(r"[^0-9]", "", str(datetime.now()))[2:]
@@ -75,10 +145,7 @@ class ProfileView(View):
                                              protein=p,
                                              fat=f,
                                              kcal=self.calculator.count_calories(c,p,f))
-        quick_meal = Meal.objects.create(product_id=new_product.id)
-        updated_day, _ = Day.objects.get_or_create(user_id=request_user_id, date=url_date)
-        updated_day.save()
-        updated_day.meal.add(quick_meal)
+        self.__add_meal(request_user_id, url_date, new_product)
 
     def __get_meals_from_date(self, url_date, request_user):
         day = Day.objects.filter(date=url_date).filter(user=request_user).first()
