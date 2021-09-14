@@ -8,11 +8,12 @@ The app uses an internal database (SQLite) and connects to external database usi
 
 
 Upcoming features and tasks:
-- deploying the app
+- the app deployment
 - user registration
-- change a main logic of the post method in ProfileView
-- improvement the profile.html template
+- change of main logic of the post method in ProfileView
+- improvement of the profile.html template
 - showing stats for a given period
+- removing meals
 
 ![Alt text](images/example2.png?raw=true "example.png")
 
