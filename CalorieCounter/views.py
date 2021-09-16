@@ -100,19 +100,43 @@ class ProfileView(View):
             self.__search_by_name(request_user_id, url_date, query)
 
     def __search_by_name(self, request_user_id, url_date, name, max_number=5):
-        #add try and checking if got results
-        results = openfoodfacts.products.search_all(name)
-        top_results = itertools.islice(results, max_number)
-        for off_product in top_results:
+        internal_products=list(Product.objects.filter(name__icontains=name))[:max_number]
+        self.products.extend(internal_products)
+
+        try:
+            results = openfoodfacts.products.search_all(name)
+            remaining_space = max_number - len(internal_products)
+        except Exception:
+            remaining_space=0
+        while(remaining_space):
             try:
-                product = Product.objects.get(ean=off_product['code'])
-            except Product.DoesNotExist:
-                product = Product.objects.create(name=off_product['product_name'], ean=off_product['_id'],
-                                                 carbohydrates=off_product['nutriments']['carbohydrates_100g'],
-                                                 protein=off_product['nutriments']['proteins_100g'],
-                                                 fat=off_product['nutriments']['fat_100g'],
-                                                 kcal=off_product['nutriments']['energy-kcal_100g'])
-            self.products.append(product)
+                off_product = next(results)
+                try:
+                    product = Product.objects.get(ean=off_product['code'])
+                    if not self.__is_in_products_list(product):
+                        self.products.append(product)
+                        remaining_space-=1
+                    else:
+                        continue
+                except Product.DoesNotExist:
+                    try:
+                        product = Product.objects.create(name=off_product['product_name'], ean=off_product['_id'],
+                                                         carbohydrates=off_product['nutriments']['carbohydrates_100g'],
+                                                         protein=off_product['nutriments']['proteins_100g'],
+                                                         fat=off_product['nutriments']['fat_100g'],
+                                                         kcal=off_product['nutriments']['energy-kcal_100g'])
+                        self.products.append(product)
+                        remaining_space -= 1
+                    except KeyError as e:
+                        print('KeyError: {}'.format(e))
+            except StopIteration:
+                break
+
+    def __is_in_products_list(self, new_product):
+        for product in self.products:
+            if product.ean==new_product.ean:
+                return True
+        return False
 
     def __search_by_ean(self, request_user_id, url_date, ean):#function name to change
         try:

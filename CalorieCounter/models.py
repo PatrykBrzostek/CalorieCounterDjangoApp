@@ -10,7 +10,7 @@ class Product(Model):
     kcal = FloatField(default=0)
 
     def __str__(self):
-        return self.name
+        return self.name[:32]
 
 class Meal(Model):
     product = ForeignKey(Product, on_delete=CASCADE)
